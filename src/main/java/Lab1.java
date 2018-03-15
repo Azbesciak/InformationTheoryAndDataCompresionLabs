@@ -1,14 +1,10 @@
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 public class Lab1 {
 
@@ -16,16 +12,10 @@ public class Lab1 {
     private static final int DEEPTH = 3;
     private static final int GENERATED_STRING_LEN = 1000;
 
-    private static List<Character> readFileCharacters(String fileName) {
-        try (Stream<String> lines = Files.lines(Paths.get("./src/main/resources/lab1/" + fileName))) {
-            return readAllChars(lines);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+
 
     public static void main(String[] args) {
-        List<Character> allChars = readFileCharacters("norm_wiki_sample.txt");
+        List<Character> allChars = Utils.readFileCharacters("norm_wiki_sample.txt");
         io.vavr.collection.HashMap<Character, AtomicInteger> modified = getSingleLettersOccurrences(allChars);
         io.vavr.collection.HashMap<Character, Double> changed = getProbability(modified);
         modified.forEach(System.out::println);
@@ -43,7 +33,7 @@ public class Lab1 {
 
     private static String prepareMarkovString(HashMap<Character, CharOrder> orders) {
         List<CharOrder> newSequence = new ArrayList<>(GENERATED_STRING_LEN);
-        getCharacterStream(SEED_WORD.chars()).map(orders::get).forEach(newSequence::add);
+        Utils.getCharacterStream(SEED_WORD.chars()).map(orders::get).forEach(newSequence::add);
         for (int i = newSequence.size() - DEEPTH + 1; i < GENERATED_STRING_LEN; i++) {
             CharOrder next = newSequence.get(i - 1).getNext(getFollowingChars(newSequence, DEEPTH, i));
             newSequence.add(orders.get(next.getSign()));
@@ -91,13 +81,7 @@ public class Lab1 {
         return io.vavr.collection.HashMap.ofAll(occurances);
     }
 
-    private static List<Character> readAllChars(Stream<String> lines) {
-        return lines.map(String::chars).flatMap(Lab1::getCharacterStream).collect(Collectors.toList());
-    }
 
-    private static Stream<Character> getCharacterStream(IntStream s) {
-        return s.mapToObj(i -> (char) i);
-    }
 
     private static String getNextCharacter(io.vavr.collection.HashMap<Character, Double> changed, double v) {
         for (Tuple2<Character, Double> val : changed) {
