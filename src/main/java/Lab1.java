@@ -13,42 +13,64 @@ import java.util.stream.Stream;
 public class Lab1 {
 
     public static final String SEED_WORD = "probability";
+    private static final int DEEPTH = 3;
+    private static final int GENERATED_STRING_LEN = 1000;
+
+    private static List<Character> readFileCharacters(String fileName) {
+        try (Stream<String> lines = Files.lines(Paths.get("./src/main/resources/lab1/" + fileName))) {
+            return readAllChars(lines);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public static void main(String[] args) {
-        try (Stream<String> lines = Files.lines(Paths.get("./src/main/resources/lab1/norm_wiki_sample.txt"))) {
-            List<Character> allChars = readAllChars(lines);
-            io.vavr.collection.HashMap<Character, AtomicInteger> modified = getSingleLettersOccurrences(allChars);
-            io.vavr.collection.HashMap<Character, Double> changed = getProbability(modified);
-            modified.forEach(System.out::println);
-            int length = 1000;
-            Random random = new Random();
-            String s = IntStream.range(0, length)
-                    .mapToDouble(x -> random.nextDouble())
-                    .mapToObj(v -> getNextCharacter(changed, v))
-                    .collect(Collectors.joining());
-            System.out.println(s);
-            System.out.println("medium len - " + Array.of(s.split("\\s+")).map(String::length).average().getOrElse(0.));
+        List<Character> allChars = readFileCharacters("norm_wiki_sample.txt");
+        io.vavr.collection.HashMap<Character, AtomicInteger> modified = getSingleLettersOccurrences(allChars);
+        io.vavr.collection.HashMap<Character, Double> changed = getProbability(modified);
+        modified.forEach(System.out::println);
+        String randomString = generateRandomString(changed);
+        System.out.println(randomString);
+        System.out.println("medium len : " + Array.of(randomString.split("\\s+")).map(String::length).average().getOrElse(0.));
 
-            HashMap<Character, CharOrder> orders = new HashMap<>();
-            int depth = 3;
-            int totalChars = allChars.size();
-            for (int i = 0; i < totalChars - 1; i++) {
-                int followingCharIndex = i + 1;
-                orders.computeIfAbsent(allChars.get(i), CharOrder::new)
-                        .addOccurrence()
-                        .addChars(getFollowingChars(allChars, depth, followingCharIndex));
-            }
-            CharOrder.normalize(orders);
-            List<CharOrder> newSequence = new ArrayList<>(length);
-            getCharacterStream(SEED_WORD.chars()).map(orders::get).forEach(newSequence::add);
-            for (int i = newSequence.size() - depth+1; i < length; i++) {
-                CharOrder next = newSequence.get(i - 1).getNext(getFollowingChars(newSequence, depth, i));
-                newSequence.add(orders.get(next.getSign()));
-            }
-            newSequence.forEach(System.out::print);
-        } catch (IOException e) {
-            e.printStackTrace();
+        HashMap<Character, CharOrder> orders = getCharOrderMap(allChars, DEEPTH);
+        String resultString = prepareMarkovString(orders);
+        String[] split = resultString.split("\\s");
+        double avgResLen = Arrays.stream(split).mapToInt(String::length).average().orElse(0);
+        System.out.println(resultString);
+        System.out.println("medium len : " + avgResLen);
+    }
+
+    private static String prepareMarkovString(HashMap<Character, CharOrder> orders) {
+        List<CharOrder> newSequence = new ArrayList<>(GENERATED_STRING_LEN);
+        getCharacterStream(SEED_WORD.chars()).map(orders::get).forEach(newSequence::add);
+        for (int i = newSequence.size() - DEEPTH + 1; i < GENERATED_STRING_LEN; i++) {
+            CharOrder next = newSequence.get(i - 1).getNext(getFollowingChars(newSequence, DEEPTH, i));
+            newSequence.add(orders.get(next.getSign()));
         }
+
+        return newSequence.stream().map(CharOrder::getSign).map(Object::toString).collect(Collectors.joining());
+    }
+
+    private static String generateRandomString(io.vavr.collection.HashMap<Character, Double> changed) {
+        Random random = new Random();
+        return IntStream.range(0, GENERATED_STRING_LEN)
+                .mapToDouble(x -> random.nextDouble())
+                .mapToObj(v -> getNextCharacter(changed, v))
+                .collect(Collectors.joining());
+    }
+
+    private static HashMap<Character, CharOrder> getCharOrderMap(List<Character> allChars, int depth) {
+        int totalChars = allChars.size();
+        HashMap<Character, CharOrder> orders = new HashMap<>();
+        for (int i = 0; i < totalChars - 1; i++) {
+            int followingCharIndex = i + 1;
+            orders.computeIfAbsent(allChars.get(i), CharOrder::new)
+                    .addOccurrence()
+                    .addChars(getFollowingChars(allChars, depth, followingCharIndex));
+        }
+        CharOrder.normalize(orders);
+        return orders;
     }
 
     private static <T> List<T> getFollowingChars(List<T> allChars, int maxLength, int firstCharIndex) {
