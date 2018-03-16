@@ -1,3 +1,7 @@
+package cs.ts.labs
+
+import cs.ti.labs.Utils
+
 object Constants {
     const val mostCommonWords = 6000
 }
