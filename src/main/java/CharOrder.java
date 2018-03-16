@@ -3,14 +3,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-public class CharOrder {
-    private final Character sign;
+public class CharOrder<T> {
+    private final T sign;
     private double probability;
     private int occurance;
-    private final Map<Character, CharOrder> next;
+    private final Map<T, CharOrder<T>> next;
 
-
-    public CharOrder(Character sign) {
+    public CharOrder(T sign) {
         this.sign = sign;
         this.next = new HashMap<>();
         this.probability = -1;
@@ -22,7 +21,7 @@ public class CharOrder {
         return this;
     }
 
-    public CharOrder getNext(List<CharOrder> chars) {
+    public CharOrder getNext(List<CharOrder<T>> chars) {
         if (!chars.isEmpty()) {
             CharOrder charOrder = next.get(chars.get(0).sign);
             if (charOrder == null) {
@@ -33,9 +32,9 @@ public class CharOrder {
         return getRandomFrom(next);
     }
 
-    public static CharOrder getRandomFrom(Map<Character, CharOrder> chars) {
+    public static <T> CharOrder getRandomFrom(Map<T, CharOrder<T>> chars) {
         double val = new Random().nextDouble();
-        for (Map.Entry<Character, CharOrder> e : chars.entrySet()) {
+        for (Map.Entry<T, CharOrder<T>> e : chars.entrySet()) {
             if (val > e.getValue().probability) {
                 val -= e.getValue().probability;
             } else {
@@ -45,11 +44,11 @@ public class CharOrder {
         throw new IllegalStateException("Could not specify letter");
     }
 
-    public void addChars(List<Character> chars) {
+    public void addChars(List<T> chars) {
        addChars(next, chars);
     }
 
-    public static void addChars(Map<Character, CharOrder> all, List<Character> chars) {
+    public static <T> void addChars(Map<T, CharOrder<T>> all, List<T> chars) {
         if (!chars.isEmpty()) {
             all.computeIfAbsent(chars.get(0), CharOrder::new)
                     .addOccurrence()
@@ -57,7 +56,7 @@ public class CharOrder {
         }
     }
 
-    public static void normalize(Map<Character, CharOrder> all) {
+    public static <T> void normalize(Map<T, CharOrder<T>> all) {
         if (all.isEmpty())
             return;
         int sum = all.entrySet().stream().map(Map.Entry::getValue).mapToInt(t -> t.occurance).sum();
@@ -73,7 +72,7 @@ public class CharOrder {
         normalize(next);
     }
 
-    public Character getSign() {
+    public T getSign() {
         return sign;
     }
 

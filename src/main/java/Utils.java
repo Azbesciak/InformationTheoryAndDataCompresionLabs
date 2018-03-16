@@ -7,6 +7,10 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class Utils {
+    public static final String HAMLET_TXT = "norm_hamlet.txt";
+    public static final String ROMEO_TXT = "norm_romeo_and_juliet.txt";
+    public static final String WIKI_TXT = "norm_wiki_sample.txt";
+
     public static List<Character> readFileCharacters(String fileName) {
         try (Stream<String> lines = Files.lines(Paths.get("./src/main/resources/lab1/" + fileName))) {
             return readAllChars(lines);
