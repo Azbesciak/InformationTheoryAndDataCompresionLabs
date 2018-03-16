@@ -1,8 +1,9 @@
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
+import io.vavr.collection.Traversable;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -13,74 +14,81 @@ public class Lab1 {
 
     public static void main(String[] args) {
         List<Character> allChars = Utils.readFileCharacters(Utils.WIKI_TXT);
-        io.vavr.collection.HashMap<Character, AtomicInteger> modified = getSingleLettersOccurrences(allChars);
+        io.vavr.collection.HashMap<Character, Integer> modified = getSingleObjectOccurrences(allChars);
         io.vavr.collection.HashMap<Character, Double> changed = getProbability(modified);
         modified.forEach(System.out::println);
-        String randomString = generateRandomString(changed);
+        String randomString = generateRandomizedSequence(changed, GENERATED_STRING_LEN);
         System.out.println(randomString);
-        System.out.println("medium len : " + Array.of(randomString.split("\\s+")).map(String::length).average().getOrElse(0.));
+        System.out.println("medium len : " + getAvgLength(randomString));
 
-        HashMap<Character, CharOrder<Character>> orders = getCharOrderMap(allChars, DEEPTH);
-        String resultString = prepareMarkovString(orders);
-        String[] split = resultString.split("\\s");
-        double avgResLen = Arrays.stream(split).mapToInt(String::length).average().orElse(0);
+        Map<Character, ObjectOrder<Character>> orders = getObjectsOrderMap(allChars, DEEPTH);
+        String resultString = prepareMarkovString(orders, GENERATED_STRING_LEN, DEEPTH, () -> {
+            List<ObjectOrder<Character>> newSequence = new ArrayList<>(GENERATED_STRING_LEN);
+            Utils.getCharacterStream(SEED_WORD.chars()).map(orders::get).forEach(newSequence::add);
+            return newSequence;
+        });
+        double avgResLen = getAvgLength(resultString);
         System.out.println(resultString);
         System.out.println("medium len : " + avgResLen);
     }
 
-    private static String prepareMarkovString(HashMap<Character, CharOrder<Character>> orders) {
-        List<CharOrder> newSequence = new ArrayList<>(GENERATED_STRING_LEN);
-        Utils.getCharacterStream(SEED_WORD.chars()).map(orders::get).forEach(newSequence::add);
-        for (int i = newSequence.size() - DEEPTH + 1; i < GENERATED_STRING_LEN; i++) {
-            CharOrder<Character> next = newSequence.get(i - 1).getNext(getFollowingChars(newSequence, DEEPTH, i));
+    private static Double getAvgLength(String stringToMeasure) {
+        return Array.of(stringToMeasure.split("\\s+"))
+                .map(String::length)
+                .average().getOrElse(0.);
+    }
+
+    public static <T> String prepareMarkovString(
+            Map<T, ObjectOrder<T>> orders, int elements, int depth, Supplier<List<ObjectOrder<T>>> seedProvider) {
+        List<ObjectOrder<T>> newSequence = seedProvider.get();
+        for (int i = newSequence.size() - depth + 1; i < elements; i++) {
+            ObjectOrder<T> next = newSequence.get(i - 1).getNext(getFollowingObjects(newSequence, depth, i));
             newSequence.add(orders.get(next.getSign()));
         }
 
-        return newSequence.stream().map(CharOrder::getSign).map(Object::toString).collect(Collectors.joining());
+        return newSequence.stream().map(ObjectOrder::getSign).map(Object::toString).collect(Collectors.joining());
     }
 
-    private static String generateRandomString(io.vavr.collection.HashMap<Character, Double> changed) {
+    public static <T> String generateRandomizedSequence(io.vavr.collection.HashMap<T, Double> changed, int elements) {
         Random random = new Random();
-        return IntStream.range(0, GENERATED_STRING_LEN)
+        return IntStream.range(0, elements)
                 .mapToDouble(x -> random.nextDouble())
-                .mapToObj(v -> getNextCharacter(changed, v))
+                .mapToObj(v -> getNext(changed, v))
                 .collect(Collectors.joining());
     }
 
-    @SuppressWarnings("unchecked")
-    private static HashMap<Character, CharOrder<Character>> getCharOrderMap(List<Character> allChars, int depth) {
-        int totalChars = allChars.size();
-        HashMap<Character, CharOrder<Character>> orders = new HashMap<>();
+    private static <T> Map<T, ObjectOrder<T>> getObjectsOrderMap(List<T> objects, int depth) {
+        int totalChars = objects.size();
+        Map<T, ObjectOrder<T>> orders = new HashMap<>();
         for (int i = 0; i < totalChars - 1; i++) {
             int followingCharIndex = i + 1;
-            orders.computeIfAbsent(allChars.get(i), CharOrder::new)
+            orders.computeIfAbsent(objects.get(i), ObjectOrder::new)
                     .addOccurrence()
-                    .addChars(getFollowingChars(allChars, depth, followingCharIndex));
+                    .addChars(getFollowingObjects(objects, depth, followingCharIndex));
         }
-        CharOrder.normalize(orders);
+        ObjectOrder.normalize(orders);
         return orders;
     }
 
-    private static <T> List<T> getFollowingChars(List<T> allChars, int maxLength, int firstCharIndex) {
-        int lastIndex = Math.min(allChars.size(), firstCharIndex + maxLength);
+    private static <T> List<T> getFollowingObjects(List<T> objects, int maxLength, int firstCharIndex) {
+        int lastIndex = Math.min(objects.size(), firstCharIndex + maxLength);
         if (firstCharIndex >= lastIndex)
             return Collections.emptyList();
-        return allChars.subList(firstCharIndex, lastIndex);
+        return objects.subList(firstCharIndex, lastIndex);
     }
 
-    private static io.vavr.collection.HashMap<Character, Double> getProbability(io.vavr.collection.HashMap<Character, AtomicInteger> modified) {
+    private static <T> io.vavr.collection.HashMap<T, Double> getProbability(io.vavr.collection.HashMap<T, Integer> modified) {
         int all = modified.values().sum().intValue();
-        return modified.mapValues(AtomicInteger::get).mapValues(a -> a / (double) all);
+        return modified.mapValues(a -> a / (double) all);
     }
 
-    private static io.vavr.collection.HashMap<Character, AtomicInteger> getSingleLettersOccurrences(List<Character> allChars) {
-        Map<Character, AtomicInteger> occurances = new HashMap<>();
-        allChars.forEach(i -> occurances.computeIfAbsent(i, x -> new AtomicInteger(0)).incrementAndGet());
-        return io.vavr.collection.HashMap.ofAll(occurances);
+    private static <T> io.vavr.collection.HashMap<T, Integer> getSingleObjectOccurrences(List<T> allObjects) {
+        Map<T, Integer> occurrence = Array.ofAll(allObjects).groupBy(c -> c).mapValues(Traversable::size).toJavaMap();
+        return io.vavr.collection.HashMap.ofAll(occurrence);
     }
 
-    private static String getNextCharacter(io.vavr.collection.HashMap<Character, Double> changed, double v) {
-        for (Tuple2<Character, Double> val : changed) {
+    private static <T> String getNext(io.vavr.collection.HashMap<T, Double> changed, double v) {
+        for (Tuple2<T, Double> val : changed) {
             if (val._2 >= v) {
                 return val._1.toString();
             } else {

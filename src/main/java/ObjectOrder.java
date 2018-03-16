@@ -3,38 +3,38 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-public class CharOrder<T> {
+public class ObjectOrder<T> {
     private final T sign;
     private double probability;
-    private int occurance;
-    private final Map<T, CharOrder<T>> next;
+    private int occurrence;
+    private final Map<T, ObjectOrder<T>> next;
 
-    public CharOrder(T sign) {
+    public ObjectOrder(T sign) {
         this.sign = sign;
         this.next = new HashMap<>();
         this.probability = -1;
-        this.occurance = 0;
+        this.occurrence = 0;
     }
 
-    CharOrder addOccurrence() {
-        this.occurance++;
+    ObjectOrder<T> addOccurrence() {
+        this.occurrence++;
         return this;
     }
 
-    public CharOrder getNext(List<CharOrder<T>> chars) {
+    public ObjectOrder<T> getNext(List<ObjectOrder<T>> chars) {
         if (!chars.isEmpty()) {
-            CharOrder charOrder = next.get(chars.get(0).sign);
-            if (charOrder == null) {
+            ObjectOrder<T> objectOrder = next.get(chars.get(0).sign);
+            if (objectOrder == null) {
                 throw new IllegalStateException("Expected letter was not found");
             }
-            return charOrder.getNext(getAllWithoutFirstCharacter(chars));
+            return objectOrder.getNext(getAllWithoutFirstCharacter(chars));
         }
         return getRandomFrom(next);
     }
 
-    public static <T> CharOrder getRandomFrom(Map<T, CharOrder<T>> chars) {
+    public static <T> ObjectOrder<T> getRandomFrom(Map<T, ObjectOrder<T>> chars) {
         double val = new Random().nextDouble();
-        for (Map.Entry<T, CharOrder<T>> e : chars.entrySet()) {
+        for (Map.Entry<T, ObjectOrder<T>> e : chars.entrySet()) {
             if (val > e.getValue().probability) {
                 val -= e.getValue().probability;
             } else {
@@ -48,18 +48,18 @@ public class CharOrder<T> {
        addChars(next, chars);
     }
 
-    public static <T> void addChars(Map<T, CharOrder<T>> all, List<T> chars) {
+    public static <T> void addChars(Map<T, ObjectOrder<T>> all, List<T> chars) {
         if (!chars.isEmpty()) {
-            all.computeIfAbsent(chars.get(0), CharOrder::new)
+            all.computeIfAbsent(chars.get(0), ObjectOrder::new)
                     .addOccurrence()
                     .addChars(getAllWithoutFirstCharacter(chars));
         }
     }
 
-    public static <T> void normalize(Map<T, CharOrder<T>> all) {
+    public static <T> void normalize(Map<T, ObjectOrder<T>> all) {
         if (all.isEmpty())
             return;
-        int sum = all.entrySet().stream().map(Map.Entry::getValue).mapToInt(t -> t.occurance).sum();
+        int sum = all.entrySet().stream().map(Map.Entry::getValue).mapToInt(t -> t.occurrence).sum();
         all.forEach((k, v) -> v.normalize(sum));
     }
 
@@ -68,7 +68,7 @@ public class CharOrder<T> {
     }
 
     public void normalize(int total) {
-        this.probability = occurance / (double)total;
+        this.probability = occurrence / (double)total;
         normalize(next);
     }
 
