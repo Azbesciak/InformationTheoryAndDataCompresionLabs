@@ -1,6 +1,7 @@
 package cs.ti.labs;
 
 import io.vavr.Tuple2;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,6 +13,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class Utils {
+    public static final String SEED_WORD = "probability";
+
     public static final String HAMLET_TXT = "norm_hamlet.txt";
     public static final String ROMEO_TXT = "norm_romeo_and_juliet.txt";
     public static final String WIKI_TXT = "norm_wiki_sample.txt";
@@ -38,16 +41,16 @@ public class Utils {
             return Collections.emptyList();
         return objects.subList(firstCharIndex, lastIndex);
     }
-
+    @NotNull
     public static <T> String prepareMarkovString(
-            Map<T, ObjectOrder<T>> orders, int elements, int depth, Supplier<List<ObjectOrder<T>>> seedProvider) {
+            Map<T, ObjectOrder<T>> orders, int elements, int depth, String delimiter,
+            Supplier<List<ObjectOrder<T>>> seedProvider) {
         List<ObjectOrder<T>> newSequence = seedProvider.get();
-        for (int i = newSequence.size() - depth + 1; i < elements; i++) {
-            ObjectOrder<T> next = newSequence.get(i - 1).getNext(getFollowingObjects(newSequence, depth, i));
+        for (int i = Math.max(0, newSequence.size() - depth + 1); i < elements; i++) {
+            ObjectOrder<T> next = newSequence.get(Math.max(i - 1, 0)).getNext(getFollowingObjects(newSequence, depth, i));
             newSequence.add(orders.get(next.getSign()));
         }
-
-        return newSequence.stream().map(ObjectOrder::getSign).map(Object::toString).collect(Collectors.joining());
+        return newSequence.stream().map(ObjectOrder::getSign).map(Object::toString).collect(Collectors.joining(delimiter));
     }
 
     public static <T> String generateRandomizedSequence(io.vavr.collection.HashMap<T, Double> changed, int elements) {

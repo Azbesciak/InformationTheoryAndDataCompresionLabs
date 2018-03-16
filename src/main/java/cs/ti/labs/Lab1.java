@@ -5,8 +5,10 @@ import io.vavr.collection.Traversable;
 
 import java.util.*;
 
+import static cs.ti.labs.Utils.SEED_WORD;
+
 public class Lab1 {
-    private static final String SEED_WORD = "probability";
+
     private static final int DEPTH = 5;
     private static final int GENERATED_STRING_LEN = 1000;
 
@@ -20,7 +22,7 @@ public class Lab1 {
         System.out.println("medium len : " + getAvgLength(randomString));
 
         Map<Character, ObjectOrder<Character>> orders = Utils.getObjectsOrderMap(allChars, DEPTH);
-        String resultString = Utils.prepareMarkovString(orders, GENERATED_STRING_LEN, DEPTH, () -> {
+        String resultString = Utils.prepareMarkovString(orders, GENERATED_STRING_LEN, DEPTH, "", () -> {
             List<ObjectOrder<Character>> newSequence = new ArrayList<>(GENERATED_STRING_LEN);
             Utils.getCharacterStream(SEED_WORD.chars()).map(orders::get).forEach(newSequence::add);
             return newSequence;
