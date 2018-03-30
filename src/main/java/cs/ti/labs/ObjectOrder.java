@@ -1,9 +1,6 @@
 package cs.ti.labs;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 public class ObjectOrder<T> {
     private final T sign;
@@ -56,6 +53,10 @@ public class ObjectOrder<T> {
                     .addOccurrence()
                     .addChars(getAllWithoutFirstCharacter(chars));
         }
+    }
+
+    public List<ObjectOrder<T>> getAllFollowing() {
+        return new ArrayList<>(next.values());
     }
 
     public static <T> void normalize(Map<T, ObjectOrder<T>> all) {

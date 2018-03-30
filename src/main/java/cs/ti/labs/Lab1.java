@@ -2,10 +2,11 @@ package cs.ti.labs;
 
 import io.vavr.collection.Array;
 import io.vavr.collection.Traversable;
+import lombok.val;
 
-import java.util.*;
-
-import static cs.ti.labs.Utils.SEED_WORD;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class Lab1 {
 
@@ -13,18 +14,18 @@ public class Lab1 {
     private static final int GENERATED_STRING_LEN = 1000;
 
     public static void main(String[] args) {
-        List<Character> allChars = Utils.readFileCharacters(Utils.WIKI_TXT);
-        io.vavr.collection.HashMap<Character, Integer> modified = getSingleObjectOccurrences(allChars);
+        List<Character> allChars = Utils.readFileCharacters(Utils.WIKI_TXT, 1);
+        val modified = getSingleObjectOccurrences(allChars);
         modified.forEach(System.out::println);
-        io.vavr.collection.HashMap<Character, Double> changed = getProbability(modified);
+        val changed = getProbability(modified);
         String randomString = Utils.generateRandomizedSequence(changed, GENERATED_STRING_LEN);
         System.out.println(randomString);
         System.out.println("medium len : " + getAvgLength(randomString));
 
-        Map<Character, ObjectOrder<Character>> orders = Utils.getObjectsOrderMap(allChars, DEPTH);
+        val orders = Utils.getObjectsOrderMap(allChars, DEPTH);
         String resultString = Utils.prepareMarkovString(orders, GENERATED_STRING_LEN, DEPTH, "", () -> {
             List<ObjectOrder<Character>> newSequence = new ArrayList<>(GENERATED_STRING_LEN);
-            Utils.getCharacterStream(SEED_WORD.chars()).map(orders::get).forEach(newSequence::add);
+            Utils.getCharacterStream(Utils.SEED_WORD.chars()).map(orders::get).forEach(newSequence::add);
             return newSequence;
         });
         double avgResLen = getAvgLength(resultString);

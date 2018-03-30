@@ -6,11 +6,11 @@ import cs.ti.labs.Utils.SEED_WORD
 object Constants {
     const val mostCommonWords = 6000
     const val maxWords = 100
-    const val depth = 1
+    const val depth = 5
 }
 
 fun main(args: Array<String>) {
-    val allChars = Utils.readFileCharacters(Utils.WIKI_TXT)
+    val allChars = Utils.readFileCharacters(Utils.WIKI_TXT, 1)
     val words = allChars.joinToString("").split(Regex("\\s"))
     val allDifWordsCount = words.size
     val wordsWithOccurrence = words.groupBy { it }.mapValues { it.value.size }

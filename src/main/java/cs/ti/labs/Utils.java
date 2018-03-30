@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -19,9 +20,17 @@ public class Utils {
     public static final String ROMEO_TXT = "norm_romeo_and_juliet.txt";
     public static final String WIKI_TXT = "norm_wiki_sample.txt";
 
-    public static List<Character> readFileCharacters(String fileName) {
-        try (Stream<String> lines = Files.lines(Paths.get("./src/main/resources/lab1/" + fileName))) {
-            return readAllChars(lines);
+    public static List<Character> readFileCharacters(String fileName, int labNum) {
+        return parseFile(fileName, labNum, Utils::readAllChars);
+    }
+
+    public static String getFileString(String fileName, int labNum) {
+        return parseFile(fileName, labNum, s -> s.collect(Collectors.joining(" ")));
+    }
+
+    private static <T> T parseFile(String fileName, int labNum, Function<Stream<String>, T> mapper) {
+        try (Stream<String> lines = Files.lines(Paths.get("./src/main/resources/lab" + labNum + "/" + fileName))) {
+            return mapper.apply(lines);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -41,13 +50,15 @@ public class Utils {
             return Collections.emptyList();
         return objects.subList(firstCharIndex, lastIndex);
     }
+
     @NotNull
     public static <T> String prepareMarkovString(
             Map<T, ObjectOrder<T>> orders, int elements, int depth, String delimiter,
             Supplier<List<ObjectOrder<T>>> seedProvider) {
         List<ObjectOrder<T>> newSequence = seedProvider.get();
-        for (int i = Math.max(0, newSequence.size() - depth + 1); i < elements; i++) {
-            ObjectOrder<T> next = newSequence.get(Math.max(i - 1, 0)).getNext(getFollowingObjects(newSequence, depth, i));
+        for (int i = Math.max(1, newSequence.size() - depth + 1); i < elements; i++) {
+            ObjectOrder<T> next = newSequence.get(Math.max(i - 1, 0))
+                    .getNext(getFollowingObjects(newSequence, depth, i));
             newSequence.add(orders.get(next.getSign()));
         }
         return newSequence.stream().map(ObjectOrder::getSign).map(Object::toString).collect(Collectors.joining(delimiter));
