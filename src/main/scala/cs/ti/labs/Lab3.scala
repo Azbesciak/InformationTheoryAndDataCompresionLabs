@@ -7,7 +7,6 @@ import scala.collection.parallel.ParMap
 import scala.math.log10
 import scala.util.Try
 
-@Slf4j
 class EntropyCounter(val provider: (String, Int) => List[List[String]], val grouper: (String) => String, val depth: Int) {
   def getFor(fileString: String): Unit = {
     val occWithNGramLen = getJoinedProbability(fileString)
@@ -65,9 +64,9 @@ class EntropyCounter(val provider: (String, Int) => List[List[String]], val grou
 
   private def getEntropy(occurences: List[BigDecimal]):BigDecimal = occurences.map(v => getEntropy(v, v)).sum
 
-  private def getEntropy(v1: BigDecimal, v2: BigDecimal) = -v1 * BigDecimal(log2(v2.doubleValue()))
+  private def getEntropy(v1: BigDecimal, v2: BigDecimal) = -v1 * log2(v2.doubleValue())
 
-  private def log2(value: Double) = log10(value) / log10(2)
+  private def log2(value: Double) = BigDecimal(log10(value)) / BigDecimal(log10(2))
 }
 
 
