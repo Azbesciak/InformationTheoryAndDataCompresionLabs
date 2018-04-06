@@ -71,14 +71,21 @@ class EntropyCounter(val provider: (String, Int) => List[List[String]], val grou
 
 
 object Lab3 {
-  val maxDepth = 3
+  val LETTERS_DEPTH = 3
+  val WORDS_DEPTH = 2
+  val LAB_NUM = 3
 
   def main(args: Array[String]): Unit = {
-    val fileString = getFileString("norm_wiki_en.txt", 3)
-    println("LETTERS")
-    new EntropyCounter(splitWithChars, _.dropRight(1), maxDepth).getFor(fileString)
-    println("WORDS")
-    new EntropyCounter(splitWithWords, removeLastWord, 2).getFor(fileString)
+    Utils.getFilesInDirectory(LAB_NUM).forEach(f => {
+      println(f)
+      println("-----------")
+      val fileString = getFileString(f, LAB_NUM)
+      println("LETTERS")
+      new EntropyCounter(splitWithChars, _.dropRight(1), LETTERS_DEPTH).getFor(fileString)
+      println("WORDS")
+      new EntropyCounter(splitWithWords, removeLastWord, WORDS_DEPTH).getFor(fileString)
+      println("------------")
+    })
   }
 
   private def splitWithChars(fileString: String, depth: Int)=

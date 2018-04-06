@@ -3,6 +3,7 @@ package cs.ti.labs;
 import io.vavr.Tuple2;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -28,8 +29,27 @@ public class Utils {
         return parseFile(fileName, labNum, s -> s.collect(Collectors.joining(" ")));
     }
 
+    public static List<String> getFilesInDirectory(int labNum) {
+        File file = new File(getLabDir(labNum));
+        if (file.exists() && file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                return Arrays.stream(files)
+                        .filter(File::isFile)
+                        .map(File::getName)
+                        .collect(Collectors.toList());
+            }
+        }
+        System.err.println("no files found in lab " + labNum);
+        return Collections.emptyList();
+    }
+
+    public static String getLabDir(int labNum) {
+        return "./src/main/resources/lab" + labNum + "/";
+    }
+
     private static <T> T parseFile(String fileName, int labNum, Function<Stream<String>, T> mapper) {
-        try (Stream<String> lines = Files.lines(Paths.get("./src/main/resources/lab" + labNum + "/" + fileName))) {
+        try (Stream<String> lines = Files.lines(Paths.get(getLabDir(labNum) + fileName))) {
             return mapper.apply(lines);
         } catch (IOException e) {
             throw new RuntimeException(e);
