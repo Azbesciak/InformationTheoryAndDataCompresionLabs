@@ -47,8 +47,9 @@ class EntropyCounter(val provider: (String, Int) => List[List[String]], val grou
       .map(t => {
         val rootProbability = Try(previous(t._1)).getOrElse(BigDecimal(1))
         val conditionalProbabilities = t._2.mapValues(_ / rootProbability)
-        if (conditionalProbabilities.values.sum < 0.99 || conditionalProbabilities.values.sum > 1.01)
-          println(s"something wrong[${conditionalProbabilities.values.sum}]: $conditionalProbabilities")
+        val sumOfConditionalProbabilities = conditionalProbabilities.values.sum
+        if (sumOfConditionalProbabilities < 0.99 || sumOfConditionalProbabilities > 1.01)
+          println(s"something wrong[sum: $sumOfConditionalProbabilities, root: $rootProbability, conditionals: $conditionalProbabilities]")
         (t._1, conditionalProbabilities)
       })
     conditionalProbability
