@@ -71,8 +71,8 @@ class EntropyCounter(val provider: (String, Int) => List[List[String]], val grou
 
 
 object Lab3 {
-  val LETTERS_DEPTH = 3
-  val WORDS_DEPTH = 2
+  val LETTERS_DEPTH = 5
+  val WORDS_DEPTH = 4
   val LAB_NUM = 3
 
   def main(args: Array[String]): Unit = {
