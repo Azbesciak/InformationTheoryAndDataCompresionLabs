@@ -2,77 +2,81 @@ package cs.ti.labs
 
 import java.io.{FileOutputStream, IOException}
 
-import cs.ti.labs.Lab4.MyString
+import scala.collection.parallel.ParMap
 
+class Codec {
+  private val HEADER_END = '|'
+  val CODING_MODIFIER = BigInt(127)
 
-object Lab4 {
-  val HEADER_END = '|'
-  def main(args: Array[String]): Unit = {
-    //    val fileString = Utils.getFileString(Utils.WIKI_TXT, 1)
-    val fileString = "abcd"
-    getOccurence(fileString)
+  def encode(text: String): Array[Byte] = {
+    val occurrences = getOccurrence(text)
+    val code = createCode(occurrences)
+    val header = prepareHeader(code)
+    val codeMap = mapCodeToBinary(code)
+    val bytes = encode(text, codeMap, header)
+    bytes
   }
 
-  def getOccurence(text: String) = {
-    val total = text.length.toDouble
-    val occurences = text.toCharArray.groupBy(f => f).mapValues(_.length)
-    create(occurences, text)
+  private def mapCodeToBinary(code: List[(Char, Int)]) = {
+    val codeLength = getCodeSize(code)
+    val codeMap = code.toMap.mapValues(_.toBinaryString.prependZeros(codeLength))
+    codeMap
   }
 
-  def create(occurences: Map[Char, Int], text: String) = {
-    val valueToChar = occurences
+  private def getOccurrence(text: String) =
+    text.toCharArray.par.groupBy(f => f).mapValues(_.length)
+
+  private def createCode(occurrences: ParMap[Char, Int]) =
+    occurrences
       .toList.sortBy(_._2)
       .reverse.zipWithIndex
       .map(v => (v._1._1, v._2 + 1))
-    val map = valueToChar.toMap.mapValues(_.toShort)
-    val header = prepareHeader(valueToChar)
 
-    encode(map, text, header)
-  }
+  private def prepareHeader(code: List[(Char, Int)]) =
+    code.map(v => s"${v._1}${("" + v._2).prependZeros(2)}").mkString("") + HEADER_END
 
-  private def prepareHeader(valueToChar: List[(Char, Int)]) = {
-    valueToChar.map(v => s"${v._1}${("" + v._2).prependZeros(2)}").mkString("") + HEADER_END
-  }
-
-  def encode(encoding: Map[Char, Short], text: String, header: String) = {
-    val maxLength = getCodeSize(encoding)
-
-    val binaryString = text.chars()
-      .map(c => encoding(c.toChar))
+  private def encode(text: String, encoding: Map[Char, String], header: String) = {
+    val binaryString = text.chars().parallel()
+      .mapToObj(c => encoding(c.toChar))
       .toArray
-      .map(_.toBinaryString)
-      .map(_.prependZeros(maxLength))
       .mkString("")
-    println(binaryString)
     val lastCharLength = s"${binaryString.length % 8}"
+
     val chars = binaryString
       .grouped(8)
-      .map(BigInt(_, 2).toByteArray.apply(0))
+      .map(BigInt(_, 2) - CODING_MODIFIER)
+      .map(_.toByteArray.apply(0))
       .toArray
-    val endString = chars.mkString("")
-    println(endString)
-    val resChars = header.toBytes ++ lastCharLength.toBytes ++ chars
-    //    val str = new String(resChars, "ASCII")
-    decode(resChars)
-//        writeToFile(resChars, "result.bin")
+    header.toBytes ++ lastCharLength.toBytes ++ chars
   }
 
-  def decode(encoded: Array[Byte]) = {
+  def decode(encoded: Array[Byte]): String = {
     val (content, lastCharLen, header) = splitHeaderAndContent(encoded)
     val coding = getCodingFromHeader(header)
     parseContent(coding, lastCharLen, content)
-//    println(coding)
-//    println(content)
-    //    content.foreach(println(_))
-    //    println(content)
   }
 
-  def parseContent(coding: Map[String, String], missing: Int, coded: Array[Byte]) = {
+  private def parseContent(coding: Map[String, String], missing: Int, coded: Array[Byte]) = {
     val maxSize = getCodeSize(coding)
-    val binars = coded.map(_.toBinaryString)
-    val padded = binars.dropRight(1).map(_.prependZeros(8)) ++ binars.last.prependZeros(missing)
-    val result = padded.mkString("").grouped(maxSize).map(coding(_)).mkString("")
-    println(result)
+    val padded = coded.dropRight(1).map(_.normalize(8)) ++ coded.last.normalize(missing)
+    padded.mkString("").grouped(maxSize).toList.par.map(coding(_)).mkString("")
+  }
+
+  private implicit class MyString(val str: String) {
+    def prependZeros(len: Int): String =
+      str.limit(len).reverse.padTo(len, "0").reverse.mkString("")
+
+    def limit(len: Int): String = if (str.length > len) str.substring(0, len) else str
+
+    def toBytes: Array[Byte] = str.toCharArray.map(_.toByte)
+  }
+
+  private implicit class MyByteArr(val byte: Array[Byte]) {
+    def str = new String(byte, "UTF-8")
+  }
+
+  private implicit class MyByte(val byte: Byte) {
+    def normalize(len: Int): String = (BigInt(byte) + CODING_MODIFIER toInt).toBinaryString.prependZeros(len)
   }
 
   private def splitHeaderAndContent(encoded: Array[Byte]) = {
@@ -92,11 +96,29 @@ object Lab4 {
     reversedCoding.map(e => (e._1.toBinaryString.prependZeros(size), e._2))
   }
 
-  private def getCodeSize(reversedCoding: Map[_, _]) = {
+  private def getCodeSize(reversedCoding: Iterable[_]) = {
     reversedCoding.size.toBinaryString.length
   }
+}
 
-  def writeToFile(data: Array[Byte], fileName: String) = {
+object Lab4 {
+  val TEMP_FILE_NAME = "alamakota.txt"
+
+  def main(args: Array[String]): Unit = {
+        val fileString = Utils.getFileString(Utils.WIKI_TXT, 1)
+    val codec = new Codec
+    val encoded = codec.encode(fileString)
+    save(encoded, TEMP_FILE_NAME)
+    val encodedFile = Utils.getFileBytes(TEMP_FILE_NAME, 4)
+    val decoded = codec.decode(encodedFile)
+    if (!(fileString equals decoded)) {
+      throw new IllegalStateException("Original and after decoding are not equal")
+    } else {
+      println(s"SUCCESS! compression: ${encoded.length / fileString.length.doubleValue * 100} %")
+    }
+  }
+
+  def save(data: Array[Byte], fileName: String): Unit = {
     var out = None: Option[FileOutputStream]
     try {
       out = Some(new FileOutputStream(Utils.getLabDir(4) + fileName))
@@ -104,22 +126,7 @@ object Lab4 {
     } catch {
       case e: IOException => e.printStackTrace()
     } finally {
-      println("entered finally ...")
       if (out.isDefined) out.get.close()
     }
   }
-
-  implicit class MyString(val str: String) {
-    def prependZeros(len: Int) =
-      str.limit(len).reverse.padTo(len, "0").reverse.mkString("")
-
-    def limit(len: Int) = if (str.length > len) str.substring(0, len) else str
-
-    def toBytes = str.toCharArray.map(_.toByte)
-  }
-
-  implicit class MyByte(val byte: Array[Byte]) {
-    def str = new String(byte, "UTF-8")
-  }
-
 }

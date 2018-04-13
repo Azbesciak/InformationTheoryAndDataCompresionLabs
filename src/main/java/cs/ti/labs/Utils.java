@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
@@ -27,6 +28,11 @@ public class Utils {
 
     public static String getFileString(String fileName, int labNum) {
         return parseFile(fileName, labNum, s -> s.collect(Collectors.joining(" ")));
+    }
+
+    public static byte[] getFileBytes(String fileName, int labNum) throws IOException {
+        Path path = Paths.get(getLabDir(labNum) + fileName);
+        return Files.readAllBytes(path);
     }
 
     public static List<String> getFilesInDirectory(int labNum) {
