@@ -83,8 +83,8 @@ class Codec {
     val headerByte = HEADER_END.toByte
     val contentWithMissingNumber = encoded.dropWhile(_ != headerByte)
     val missingNum = contentWithMissingNumber.slice(1, 2).str.toInt
-    val content = contentWithMissingNumber.drop(2)
-    val header = encoded.dropRight(contentWithMissingNumber.length)
+    val content = contentWithMissingNumber drop 2
+    val header = encoded dropRight contentWithMissingNumber.length
     (content, missingNum, header)
   }
 
@@ -105,7 +105,7 @@ object Lab4 {
   val TEMP_FILE_NAME = "alamakota.txt"
 
   def main(args: Array[String]): Unit = {
-        val fileString = Utils.getFileString(Utils.WIKI_TXT, 1)
+    val fileString = Utils.getFileString(Utils.WIKI_TXT, 1)
     val codec = new Codec
     val encoded = codec.encode(fileString)
     save(encoded, TEMP_FILE_NAME)
