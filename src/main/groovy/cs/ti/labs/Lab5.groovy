@@ -5,7 +5,7 @@ import java.util.function.Function
 
 class Lab5 {
     private static final String OUTPUT_FILE_NAME = "huffman.txt"
-    private static final boolean withValidation = false
+    private static final boolean withValidation = true
 
     static def compare(Function<String, byte[]> coder) {
         def fileString = Utils.getFileString(Utils.WIKI_TXT, 1)
@@ -32,7 +32,7 @@ class Lab5 {
         compare { huffmanCode(it) }
     }
 
-    private static byte[] huffmanCode(original) {
+    private static byte[] huffmanCode(String original) {
         def coder = new HuffmanCoder()
         def codded = coder.encode(original)
         Lab4.save(codded, OUTPUT_FILE_NAME, 5)
