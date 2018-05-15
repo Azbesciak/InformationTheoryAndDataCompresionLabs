@@ -1,6 +1,5 @@
 package cs.ti.labs
 
-import groovy.transform.Canonical
 import groovy.transform.CompileStatic
 
 import java.util.stream.Collectors
@@ -64,11 +63,11 @@ class HuffmanCoder {
     @CompileStatic
     static String decode(String codedMsg, Map<String, String> codeTable) {
         StringBuilder message = new StringBuilder()
-        def codes = codeTable.collect { k, v -> new Code(code: k, letter: v, codeSize: k.size()) }.sort { it.code.size() }
+        def codes = codeTable.collect { k, v -> new Code(k, v, k.size()) }.sort { it.code.size() }
         while (!codedMsg.isEmpty()) {
             def node = codes.find { codedMsg.startsWith(it.code) }
             if (node == null) {
-                new IllegalStateException("$codedMsg not found in coding: $codeTable")
+                throw new IllegalStateException("$codedMsg not found in coding: $codeTable")
             }
             message.append(node.letter)
             codedMsg = codedMsg.substring(node.codeSize)
@@ -76,11 +75,16 @@ class HuffmanCoder {
         message.toString()
     }
 
-    @Canonical
     @CompileStatic
     static class Code {
         String letter
         String code
         int codeSize
+
+        Code(String letter, String code, int codeSize) {
+            this.letter = letter
+            this.code = code
+            this.codeSize = codeSize
+        }
     }
 }
