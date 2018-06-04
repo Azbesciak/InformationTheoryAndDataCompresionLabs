@@ -43,7 +43,7 @@ class Lab5 {
     private static void validate(HuffmanCoder coder, CharSequence original) {
         def bytes = Utils.getFileBytes(OUTPUT_FILE_NAME, 5)
         def decoded = coder.decode(bytes)
-        if (!decoded.equals(original)) {
+        if (decoded != original) {
             throw new IllegalStateException("Not the same after decoding")
         }
     }

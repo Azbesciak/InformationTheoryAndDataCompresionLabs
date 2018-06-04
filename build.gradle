@@ -13,6 +13,7 @@ repositories {
     mavenCentral()
 }
 
+
 buildscript {
     ext.kotlin_version = '1.2.30'
     repositories {
@@ -43,5 +44,5 @@ dependencies {
     compileOnly "org.projectlombok:lombok:1.16.16"
     compile group: 'io.vavr', name: 'vavr', version: '0.9.1'
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-
+    testCompile group: 'junit', name: 'junit', version: '4.12'
 }

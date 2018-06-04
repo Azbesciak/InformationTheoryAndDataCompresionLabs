@@ -30,6 +30,11 @@ public class Utils {
         return parseFile(fileName, labNum, s -> s.collect(Collectors.joining(" ")));
     }
 
+    public static String getImage(String fileName, int labNum) throws IOException {
+        byte[] bytes = getFileBytes(fileName, labNum);
+        return Base64.getEncoder().encodeToString(bytes);
+    }
+
     public static byte[] getFileBytes(String fileName, int labNum) throws IOException {
         Path path = Paths.get(getLabDir(labNum) + fileName);
         return Files.readAllBytes(path);

@@ -1,5 +1,7 @@
 package cs.ts.labs
 
+import cs.ti.labs.HuffmanCoder
+import cs.ti.labs.Lab4
 import cs.ti.labs.Utils
 import java.util.*
 
@@ -69,8 +71,9 @@ fun main(args: Array<String>) {
     val codding = mutableMapOf<Char, String>()
     toMap(tree, codding)
     val encoded = encode(test, codding)
-    val reverseCodding = codding.map { it.value to it.key.toString() }.toMap()
-    val decoded = decode(encoded, reverseCodding)
+    val bytes = HuffmanCoder.encodeToBytes(encoded, codding)
+    Lab4.save(bytes, "huffmankt.txt", 5)
+    val decoded = HuffmanCoder.decode(bytes, ::decode)
     if (decoded != test) {
         throw IllegalStateException("DIFFERENT")
     } else {

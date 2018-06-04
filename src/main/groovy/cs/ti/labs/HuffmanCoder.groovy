@@ -2,6 +2,7 @@ package cs.ti.labs
 
 import groovy.transform.CompileStatic
 
+import java.util.function.BiFunction
 import java.util.stream.Collectors
 
 class HuffmanCoder {
@@ -39,10 +40,13 @@ class HuffmanCoder {
     byte[] encode(String content) {
         def code = huffmanCode(content)
         def binaryString = encode(content, code)
+        encodeToBytes(binaryString, code)
+    }
+
+    static byte[] encodeToBytes(String binaryString, Map<Character, String> code) {
         def coding = code.collectEntries { Character key, String value -> [key, new BigInteger("1$value", 2).intValue()] }
         def header = Codec.prepareHeader(coding as Map<Object, Object>, CODE_SIZE)
-        def bytes = Codec.prepareFileBytes(header, binaryString)
-        bytes
+        Codec.prepareFileBytes(header, binaryString)
     }
 
     static String encode(CharSequence msg, Map<Character, String> codeTable) {
@@ -50,6 +54,10 @@ class HuffmanCoder {
     }
 
     static String decode(byte[] encoded) {
+        decode(encoded, this.&decode)
+    }
+
+    static String decode(byte[] encoded, BiFunction<String, Map<String, String>, String> decoder) {
         def t = Codec.splitHeaderAndContent(encoded)
         byte[] content = t._1()
         int lastCharSize = t._2() as int
@@ -57,34 +65,24 @@ class HuffmanCoder {
         def coding = Codec.getRawCoding(header, CODE_SIZE + 1)
         def javaCoding = Codec.toJava(coding).collectEntries { k, v -> [(k.drop(1)): v] }
         def binaryString = Codec.getContentBinaryString(content, lastCharSize)
-        decode(binaryString, javaCoding as Map<String, String>)
+        decoder.apply(binaryString, javaCoding as Map<String, String>)
     }
 
     @CompileStatic
     static String decode(String codedMsg, Map<String, String> codeTable) {
-        StringBuilder message = new StringBuilder()
-        def codes = codeTable.collect { k, v -> new Code(k, v, k.size()) }.sort { it.code.size() }
-        while (!codedMsg.isEmpty()) {
-            def node = codes.find { codedMsg.startsWith(it.code) }
-            if (node == null) {
-                throw new IllegalStateException("$codedMsg not found in coding: $codeTable")
+        def message = new StringBuilder()
+        def key = ""
+        codedMsg.toCharArray().each {
+            key += it
+            def letter = codeTable[key]
+            if (letter != null) {
+                message.append(letter)
+                key = ""
             }
-            message.append(node.letter)
-            codedMsg = codedMsg.substring(node.codeSize)
         }
-        message.toString()
-    }
-
-    @CompileStatic
-    static class Code {
-        String letter
-        String code
-        int codeSize
-
-        Code(String letter, String code, int codeSize) {
-            this.letter = letter
-            this.code = code
-            this.codeSize = codeSize
+        if (!key.isEmpty()) {
+            throw new IllegalStateException("$key left without assignment")
         }
+        return message.toString()
     }
 }
