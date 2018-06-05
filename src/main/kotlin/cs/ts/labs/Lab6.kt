@@ -1,26 +1,32 @@
 package cs.ts.labs
 
 import cs.ti.labs.Utils
+import java.io.ByteArrayOutputStream
+
+
+private fun buildDictionary(): MutableMap<List<Byte>, Int> {
+    return (Byte.MIN_VALUE..Byte.MAX_VALUE)
+            .mapIndexed { i, c -> c.toByte().toArray() to i }
+            .toMap().toMutableMap()
+}
+
+fun Byte.toArray() = listOf(this)
 
 
 object Lzw {
-    fun compress(uncompressed: String): MutableList<Int> {
+    fun compress(uncompressed: ByteArray): MutableList<Int> {
         // Build the dictionary.
-        var dictSize = 256
-        val dictionary = mutableMapOf<String, Int>()
-        (0 until dictSize).forEach { dictionary[it.toChar().toString()] = it }
-
-        var w = ""
+        val dictionary = buildDictionary()
+        var w = listOf<Byte>()
         val result = mutableListOf<Int>()
         for (c in uncompressed) {
             val wc = w + c
-            w = if (dictionary.containsKey(wc))
+            w = if (dictionary.contains(wc))
                 wc
             else {
                 result.add(dictionary[w]!!)
-                // Add wc to the dictionary.
-                dictionary[wc] = dictSize++
-                c.toString()
+                dictionary[wc] = dictionary.size + 1
+                c.toArray()
             }
         }
 
@@ -28,36 +34,34 @@ object Lzw {
         return result
     }
 
-    fun decompress(compressed: MutableList<Int>): String {
-        // Build the dictionary.
-        var dictSize = 256
-        val dictionary = mutableMapOf<Int, String>()
-        (0 until dictSize).forEach { dictionary[it] = it.toChar().toString() }
+    fun decompress(compressed: MutableList<Int>): ByteArray {
+        val dictionary = buildDictionary()
+                .map { it.value to it.key }
+                .toMap().toMutableMap()
 
-        var w = compressed.removeAt(0).toChar().toString()
-        val result = StringBuilder(w)
+        val result = ByteArrayOutputStream()
+        var w = compressed.removeAt(0).toByte().toArray()
+        result.write(w.toByteArray())
         for (k in compressed) {
-            val entry: String = when {
+            val entry = when {
                 dictionary.containsKey(k) -> dictionary[k]!!
-                k == dictSize -> w + w[0]
+                k == dictionary.size -> w + w[0]
                 else -> throw IllegalArgumentException("Bad compressed k: $k")
             }
-            result.append(entry)
-
-            // Add w + entry[0] to the dictionary.
-            dictionary[dictSize++] = w + entry[0]
+            result.write(entry.toByteArray())
+            dictionary[dictionary.size] = w + entry[0]
             w = entry
         }
-        return result.toString()
+        return result.toByteArray()
     }
 }
 
 fun main(args: Array<String>) {
-    val text = Utils.getImage("lena.bmp", 6)
+    val text = Utils.getFileBytes("lena.bmp", 6)!!
     val compressed = Lzw.compress(text)
 
     val decompressed = Lzw.decompress(compressed)
-    if (text != decompressed) {
+    if (!text.contentEquals(decompressed)) {
         throw IllegalStateException("Invalid after decoding")
     } else {
         println("ok")
