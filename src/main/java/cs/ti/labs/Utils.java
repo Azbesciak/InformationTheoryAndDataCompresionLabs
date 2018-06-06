@@ -21,6 +21,7 @@ public class Utils {
     public static final String HAMLET_TXT = "norm_hamlet.txt";
     public static final String ROMEO_TXT = "norm_romeo_and_juliet.txt";
     public static final String WIKI_TXT = "norm_wiki_sample.txt";
+    public static final String LENA_BMP = "lena.bmp";
 
     public static List<Character> readFileCharacters(String fileName, int labNum) {
         return parseFile(fileName, labNum, Utils::readAllChars);
