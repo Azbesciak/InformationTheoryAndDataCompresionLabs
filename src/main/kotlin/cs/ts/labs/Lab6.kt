@@ -3,9 +3,12 @@ package cs.ts.labs
 import cs.ti.labs.Codec
 import cs.ti.labs.Lab4
 import cs.ti.labs.Utils
+import cs.ts.labs.HuffmanCodec.compare
 import java.io.ByteArrayOutputStream
 import java.math.BigInteger
 
+const val FILE_NAME = Utils.WIKI_TXT
+const val LAB_NUM = 1
 
 private fun buildDictionary(): MutableMap<List<Byte>, Int> {
     return (Byte.MIN_VALUE..Byte.MAX_VALUE)
@@ -61,18 +64,17 @@ object Lzw {
 }
 
 fun main(args: Array<String>) {
-    val text = Utils.getFileBytes(Utils.WIKI_TXT, 1)!!
+    val text = Utils.getFileBytes(FILE_NAME, LAB_NUM)!!
     val compressed = Lzw.compress(text)
-    val toBytes = compressed.toBytes()
-
-    Lab4.save(toBytes, "lzw.txt", 6)
-    val decodeSaved = toBytes.decodeSaved()
+    val lzwBytes = compressed.toBytes()
+    val huffmanEncoded = HuffmanCodec.encode(lzwBytes)
+    Lab4.save(huffmanEncoded, "lzw_$FILE_NAME", 6)
+    val huffmanDecoded = HuffmanCodec.decode(huffmanEncoded)
+    compare("Invalid after huffman decoding") { lzwBytes.contentEquals(huffmanDecoded) }
+    val decodeSaved = lzwBytes.decodeSaved()
+    compare("Invalid lzw codes") { compressed == decodeSaved }
     val decompressed = Lzw.decompress(decodeSaved)
-    if (!text.contentEquals(decompressed)) {
-        throw IllegalStateException("Invalid after decoding")
-    } else {
-        println("ok")
-    }
+    compare("Invalid after decoding") { text.contentEquals(decompressed) }
 }
 
 fun ByteArray.decodeSaved(): List<Int> {

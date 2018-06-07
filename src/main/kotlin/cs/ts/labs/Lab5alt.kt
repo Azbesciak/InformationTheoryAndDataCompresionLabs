@@ -3,9 +3,10 @@ package cs.ts.labs
 import cs.ti.labs.HuffmanCoder
 import cs.ti.labs.Lab4
 import cs.ti.labs.Utils
+import java.io.ByteArrayOutputStream
 import java.util.*
 
-abstract class HuffmanTree(val freq: Int) : Comparable<HuffmanTree> {
+sealed class HuffmanTree(val freq: Int) : Comparable<HuffmanTree> {
     override fun compareTo(other: HuffmanTree) = freq - other.freq
 }
 
@@ -13,70 +14,92 @@ class HuffmanLeaf(freq: Int, val value: Char) : HuffmanTree(freq)
 
 class HuffmanNode(val left: HuffmanTree, val right: HuffmanTree) : HuffmanTree(left.freq + right.freq)
 
-fun buildTree(charFreqs: IntArray): HuffmanTree {
-    val trees = PriorityQueue<HuffmanTree>()
+fun Byte.asChar() =
+        if (toInt() < 0)
+            (256 + toInt()).toChar()
+        else
+            toChar()
 
-    charFreqs.forEachIndexed { index, freq ->
-        if (freq > 0) trees.offer(HuffmanLeaf(freq, index.toChar()))
+fun Char.asByte() = if (toInt() > Byte.MAX_VALUE) (toInt()-256).toByte() else toByte()
+
+
+fun ByteArray.toListOfChars() = map { it.asChar() }.toList()
+
+object HuffmanCodec {
+    private fun buildTree(charFreqs: Map<Byte, Int>): HuffmanTree {
+        val trees = PriorityQueue<HuffmanTree>()
+        charFreqs.mapKeys { it.key.asChar() }
+                .toList().sortedByDescending { it.second }
+                .forEach { trees.offer(HuffmanLeaf(it.second, it.first)) }
+
+        assert(trees.size > 0)
+        while (trees.size > 1) {
+            val a = trees.poll()
+            val b = trees.poll()
+            trees.offer(HuffmanNode(a, b))
+        }
+
+        return trees.poll()
     }
 
-    assert(trees.size > 0)
-    while (trees.size > 1) {
-        val a = trees.poll()
-        val b = trees.poll()
-        trees.offer(HuffmanNode(a, b))
+    private fun toMap(tree: HuffmanTree, codding: MutableMap<Char, String>, prefix: String = "") {
+        when (tree) {
+            is HuffmanLeaf -> codding[tree.value] = prefix
+            is HuffmanNode -> {
+                toMap(tree.left, codding, prefix + '0')
+                toMap(tree.right, codding, prefix + '1')
+            }
+        }
     }
 
-    return trees.poll()
-}
+    private fun encode(msg: CharSequence, codeTable: Map<Char, String>) =
+            msg.map { codeTable[it] }.joinToString("")
 
-fun toMap(tree: HuffmanTree, codding: MutableMap<Char, String>, prefix: String = "") {
-    when (tree) {
-        is HuffmanLeaf -> codding[tree.value] = prefix
-        is HuffmanNode -> {
-            toMap(tree.left, codding, prefix + '0')
-            toMap(tree.right, codding, prefix + '1')
+    private fun decode(codedMsg: String, codeTable: Map<String, Char>): ByteArray {
+        val message = ByteArrayOutputStream()
+        var key = ""
+        codedMsg.toCharArray().forEach {
+            key += it
+            val letter = codeTable[key]
+            if (letter != null) {
+                val byteArrayOf = byteArrayOf(letter.asByte())
+                message.write(byteArrayOf)
+                key = ""
+            }
+        }
+        if (key.isNotEmpty()) {
+            throw IllegalStateException("$key left without assignment")
+        }
+        return message.toByteArray()
+    }
+
+    fun encode(toEncode: ByteArray): ByteArray {
+        val freqs = toEncode.groupBy { it }.mapValues { it.value.size }
+
+        val tree = buildTree(freqs)
+        val codding = mutableMapOf<Char, String>()
+        toMap(tree, codding)
+        val encoded = encode(toEncode.toListOfChars().joinToString(""), codding)
+        return HuffmanCoder.encodeToBytes(encoded, codding)
+    }
+
+    fun decode(bytes: ByteArray): ByteArray = HuffmanCoder.decode(bytes, ::decode)
+
+    @JvmStatic
+    fun main(args: Array<String>) {
+        val test = Utils.getFileBytes(Utils.WIKI_TXT, 1)
+        val bytes = encode(test)
+        Lab4.save(bytes, "huffmankt.txt", 5)
+        val decoded = decode(bytes)
+        compare("Different") { decoded.contentEquals(test) }
+    }
+
+    fun compare(message: String, isEqual: () -> Boolean) {
+        if (!isEqual()) {
+            throw IllegalStateException(message)
+        } else {
+            println("ok")
         }
     }
 }
 
-fun encode(msg: CharSequence, codeTable: Map<Char, String>) =
-        msg.map { codeTable[it] }.joinToString("")
-
-fun decode(codedMsg: String, codeTable: Map<String, String>): String {
-    val message = StringBuilder()
-    var key = ""
-    codedMsg.toCharArray().forEach {
-        key += it
-        val letter = codeTable[key]
-        if (letter != null) {
-            message.append(letter)
-            key = ""
-        }
-    }
-    if (key.isNotEmpty()) {
-        throw IllegalStateException("$key left without assignment")
-    }
-    return message.toString()
-}
-
-fun main(args: Array<String>) {
-    val test = Utils.getFileString(Utils.WIKI_TXT, 1)
-
-    val maxIndex = test.max()!!.toInt() + 1
-    val freqs = IntArray(maxIndex) //256 enough for latin ASCII table, but dynamic size is more fun
-    test.forEach { freqs[it.toInt()] += 1 }
-
-    val tree = buildTree(freqs)
-    val codding = mutableMapOf<Char, String>()
-    toMap(tree, codding)
-    val encoded = encode(test, codding)
-    val bytes = HuffmanCoder.encodeToBytes(encoded, codding)
-    Lab4.save(bytes, "huffmankt.txt", 5)
-    val decoded = HuffmanCoder.decode(bytes, ::decode)
-    if (decoded != test) {
-        throw IllegalStateException("DIFFERENT")
-    } else {
-        println("OK")
-    }
-}

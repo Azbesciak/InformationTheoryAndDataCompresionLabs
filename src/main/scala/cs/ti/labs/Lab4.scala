@@ -9,7 +9,7 @@ import scala.collection.JavaConverters._
 
 object Codec {
   private val CODING_MODIFIER = BigInt(128)
-  private val HEADER_END = '|'
+  private val HEADER_END = "||"
 
   def toJava[K,V](map: Map[K,V]): java.util.Map[K,V] = map.asJava
 
@@ -24,12 +24,25 @@ object Codec {
   }
 
   def splitHeaderAndContent(encoded: Array[Byte]): (Array[Byte], Int, Array[Byte]) = {
-    val headerByte = HEADER_END.toByte
-    val contentWithMissingNumber = encoded.dropWhile(_ != headerByte)
-    val missingNum = contentWithMissingNumber.slice(1, 2).str.toInt
-    val content = contentWithMissingNumber drop 2
-    val header = encoded dropRight contentWithMissingNumber.length
+   val separatorIndex = getSeparatorIndex(encoded)
+    val contentWithMissingNumber = encoded.drop(separatorIndex)
+    val missingLenIndex = HEADER_END.length + 1
+    val missingNum = contentWithMissingNumber.slice(HEADER_END.length, missingLenIndex).str.toInt
+    val content = contentWithMissingNumber drop missingLenIndex
+    val header = encoded take separatorIndex
     (content, missingNum, header)
+  }
+
+  private def getSeparatorIndex(encoded: Array[Byte]): Int = {
+    val headerByte = HEADER_END.toBytes
+    val separatorLen = HEADER_END.length
+    for (i <- 0 until (encoded.length - separatorLen)) {
+      val window = encoded.slice(i, i + separatorLen)
+      if (window.deep == headerByte.deep) {
+        return i
+      }
+    }
+    throw new IllegalStateException("Separator not found")
   }
 
   def prepareHeader(code: java.util.Map[Char, Int], valueSize: Int): String =
@@ -38,14 +51,17 @@ object Codec {
   private def prepareHeader(code: List[(Char, Int)], valueSize: Int = 2): String =
     code.map(v => s"${v._1}${("" + v._2).prependZeros(valueSize)}").mkString("")
 
-  def getRawCoding(header: Array[Byte], groupSize: Int = 3): Map[String, String] =  {
+  def getRawCoding(header: Array[Byte], groupSize: Int = 3): Map[String, Char] =  {
     header.grouped(groupSize)
       .map(k => k.splitAt(1))
-      .toMap.map(e => (e._2.str.toInt.toBinaryString, e._1.str))
+      .toMap.map(e => (e._2.str.toInt.toBinaryString, e._1.str(0)))
   }
 
   def getContentBinaryString(coded: Array[Byte], missing: Int): String = {
-    (coded.dropRight(1).map(_.normalize(8)) ++ coded.last.normalize(missing)).mkString("")
+    if (missing > 0)
+      (coded.dropRight(1).map(_.normalize(8)) ++ coded.last.normalize(missing)).mkString("")
+    else
+      coded.map(_.normalize(8)).mkString("")
   }
 
   implicit class MyString(val str: String) {
@@ -61,7 +77,10 @@ object Codec {
   }
 
   private implicit class MyByteArr(val byte: Array[Byte]) {
-    def str = new String(byte, "UTF-8")
+    def str: String = byte.map(b => {
+      if (b.toInt < 0) (256 + b.toInt).toChar
+      else b.toChar
+    }).mkString("")
   }
 
   private implicit class MyByte(val byte: Byte) {
@@ -110,7 +129,7 @@ class Codec {
     parseContent(coding, lastCharLen, content)
   }
 
-  private def parseContent(coding: Map[String, String], missing: Int, coded: Array[Byte]) = {
+  private def parseContent(coding: Map[String, Char], missing: Int, coded: Array[Byte]) = {
     val maxSize = getCodeSize(coding)
     val padded = getContentBinaryString(coded, missing)
     padded.grouped(maxSize).toList.par.map(coding(_)).mkString("")
@@ -119,7 +138,7 @@ class Codec {
   private def getCodingFromHeader(header: Array[Byte]) = {
     val rawCodding = getRawCoding(header)
     val maxLength = rawCodding.keys.map(_.length).max
-    rawCodding.map {t => (t._1.prependZeros(2), t._2)}
+    rawCodding.map {t => (t._1.prependZeros(maxLength), t._2)}
   }
 
   private def getCodeSize(reversedCoding: Iterable[_]) = {

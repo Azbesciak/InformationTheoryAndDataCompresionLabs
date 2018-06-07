@@ -5,7 +5,7 @@ import java.util.function.Function
 
 class Lab5 {
     private static final String OUTPUT_FILE_NAME = "huffman.txt"
-    private static final boolean withValidation = true
+    private static final boolean withValidation = false
 
     static def compare(Function<String, byte[]> coder) {
         def fileString = Utils.getFileString(Utils.WIKI_TXT, 1)
@@ -20,7 +20,9 @@ class Lab5 {
         .collect { -it * log2(it as BigDecimal) }
                 .sum()
         println("original: ${entropy / 8}")
-        println("encoded: ${entropy / getCodingWordLength(bytes.length, fileString.length())}")
+        def avgCodeLen = getCodingWordLength(bytes.length, fileString.length())
+        println("encoded: ${entropy / avgCodeLen}")
+        println("medium code length: ${avgCodeLen}")
     }
 
     static def getCodingWordLength(int coded, int original) {

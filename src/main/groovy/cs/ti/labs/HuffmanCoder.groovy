@@ -57,7 +57,7 @@ class HuffmanCoder {
         decode(encoded, this.&decode)
     }
 
-    static String decode(byte[] encoded, BiFunction<String, Map<String, String>, String> decoder) {
+    static byte[] decode(byte[] encoded, BiFunction<String, Map<String, Character>, byte[]> decoder) {
         def t = Codec.splitHeaderAndContent(encoded)
         byte[] content = t._1()
         int lastCharSize = t._2() as int
@@ -65,7 +65,7 @@ class HuffmanCoder {
         def coding = Codec.getRawCoding(header, CODE_SIZE + 1)
         def javaCoding = Codec.toJava(coding).collectEntries { k, v -> [(k.drop(1)): v] }
         def binaryString = Codec.getContentBinaryString(content, lastCharSize)
-        decoder.apply(binaryString, javaCoding as Map<String, String>)
+        decoder.apply(binaryString, javaCoding as Map<String, Character>)
     }
 
     @CompileStatic
