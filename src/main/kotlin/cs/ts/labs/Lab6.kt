@@ -26,12 +26,13 @@ object Lzw {
         val result = mutableListOf<Int>()
         for (c in uncompressed) {
             val wc = w + c
-            w = if (dictionary.contains(wc))
-                wc
-            else {
-                result.add(dictionary[w]!!)
-                dictionary[wc] = dictionary.size
-                listOf(c)
+            w = when {
+                dictionary.contains(wc) -> wc
+                else -> {
+                    result.add(dictionary[w]!!)
+                    dictionary[wc] = dictionary.size
+                    listOf(c)
+                }
             }
         }
 
@@ -75,8 +76,10 @@ fun main(args: Array<String>) {
     compare("Invalid lzw codes") { compressed == decodeSaved }
     val decompressed = Lzw.decompress(decodeSaved)
     compare("Invalid after decoding") { text.contentEquals(decompressed) }
+    Lab4.save(decompressed, "de$FILE_NAME", LAB_NUM)
 }
 
+val MODIFIER = BigInteger("128")
 fun ByteArray.decodeSaved(): List<Int> {
     val res = Codec.splitHeaderAndContent(this)
     val missing = res._2() as Int
@@ -84,13 +87,15 @@ fun ByteArray.decodeSaved(): List<Int> {
     val content = res._1()!!
     val maxSize = String(header).toInt()
     val contentBinaryString = Codec.getContentBinaryString(content, missing)
-    return contentBinaryString.chunked(maxSize).map { BigInteger(it, 2).toInt() }
+    return contentBinaryString.chunked(maxSize).map { (BigInteger(it, 2) - MODIFIER).toInt() }
 }
 
 fun Int.toBytes() = BigInteger(toString()).toByteArray().toList()
 
 fun List<Int>.toBytes(): ByteArray {
-    val bytes = map { BigInteger(it.toBytes().toByteArray()).toString(2)!! }
+    val bytes = map {
+        (BigInteger(it.toBytes().toByteArray()) + MODIFIER).toString(2)!!
+    }
     val maxSize = bytes.map { it.length }.max() ?: 0
     val body = bytes.joinToString("") { it.padStart(maxSize, '0') }
     return Codec.prepareFileBytes(maxSize.toString(), body)
